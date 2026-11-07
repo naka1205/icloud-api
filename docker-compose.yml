@@ -1,0 +1,35 @@
+services:
+  icloud-api:
+    # Image built by GitHub Actions (.github/workflows/images.yml) and pushed
+    # to GHCR as ghcr.io/naka1205/icloud-api:latest (linux/arm64). The server
+    # only pulls it — no source checkout or local build needed (same pattern
+    # as wkbdy-api / gemini-api).
+    image: ghcr.io/naka1205/icloud-api:latest
+    container_name: icloud-api
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8081}
+      ICLOUD_API_ADMIN_PASSWORD: ${ICLOUD_API_ADMIN_PASSWORD:?set ICLOUD_API_ADMIN_PASSWORD in .env}
+      ICLOUD_API_SESSION_TTL: ${ICLOUD_API_SESSION_TTL:-12h}
+      ICLOUD_API_SECURE_COOKIE: ${ICLOUD_API_SECURE_COOKIE:-false}
+      DATA_DIR: /app/data
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${HOST_PORT:-8081}:${PORT:-8081}"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '8081') + '/health')
+          .then((response) => { if (!response.ok) process.exit(1); })
+          .catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 30s
